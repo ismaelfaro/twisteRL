@@ -68,9 +68,9 @@ impl EmbeddingBag {
         let mut out = self.bias.clone();
         if self.obs_shape.len() == 1 {
             // This is standard embeddings / linear
-            for &i in input.iter() {
-                out += &self.vectors[i];
-            }
+            input.iter()
+                .for_each(|&i| out += &self.vectors[i]);
+        
         } else if self.obs_shape.len() == 2 {
             let v_size = self.vectors[0].len();
             // This is conv1d

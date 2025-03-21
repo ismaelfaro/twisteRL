@@ -28,13 +28,9 @@ pub struct MCTSNode<T: Env> {
 }
 impl<T: Env> MCTSNode<T> {
     fn ucb(&self, child: &MCTSNode<T>, C: f32) -> f32 {
-        let q_value = if child.visit_count == 0 {
-            //0.5
-            0.0
-        } else {
-            //((child.value_sum / (child.visit_count as f32)) + 1.0) / 2.0
-            child.value_sum / (child.visit_count as f32)
-        };
+        let q_value = child.visit_count
+        .checked_div(1)
+        .map_or(0.0, |_| child.value_sum / (child.visit_count as f32));
 
         q_value + C * ((self.visit_count as f32).sqrt() / (child.visit_count as f32 + 1.0)) * child.prior
     }
@@ -76,19 +72,14 @@ impl<T: Env+Clone> MCTSTree<T> {
 
     // Select the best child node based on UCB score
     pub fn next(&self, node_idx: usize, C: f32) -> usize {
-        let mut best_child = None;
-        let mut best_ucb = f32::NEG_INFINITY;
-
-        for child_idx in self.nodes[node_idx].children.iter() {
-            let ucb = self.nodes[node_idx].val.ucb(&self.nodes[*child_idx].val, C);
-
-            if ucb > best_ucb {
-                best_child = Some(*child_idx);
-                best_ucb = ucb;
-            }
-        }
-
-        best_child.expect("No child selected in next()")
+        self.nodes[node_idx].children.iter()
+        .max_by(|&&a, &&b| {
+            let ucb_a = self.nodes[node_idx].val.ucb(&self.nodes[a].val, C);
+            let ucb_b = self.nodes[node_idx].val.ucb(&self.nodes[b].val, C);
+            ucb_a.partial_cmp(&ucb_b).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .copied()
+        .expect("No child selected in next()")
     }
 
     // Select the best child node based on UCB score
@@ -167,14 +158,14 @@ pub trait Search: Env + Clone {
         }
 
         let sum_probs: f32 = mcts_action_probs.iter().sum();
-        if sum_probs > 0.0 {
-            for p in mcts_action_probs.iter_mut() {
-                *p /= sum_probs;
-            }
+        mcts_action_probs = if sum_probs > 0.0 {
+            mcts_action_probs.into_iter()
+                .map(|p| p / sum_probs)
+                .collect()
         } else {
-            mcts_action_probs = vec![1.0/(self.num_actions() as f32); self.num_actions() as usize];
-        }
-
+            vec![1.0 / (self.num_actions() as f32); self.num_actions()]
+        };
+        
         mcts_action_probs
     }
 }

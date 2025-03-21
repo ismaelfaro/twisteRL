@@ -128,26 +128,11 @@ impl Policy {
 }
 
 pub fn argmax(values: &Vec<f32>) -> usize {
-    // If the vector is empty, return 0 by default.
-    if values.is_empty() {
-        return 0;
-    }
-
-    let mut max_idx = 0;
-    let mut max_val = values[0];
-
-    // We start iterating from the second element because we already took
-    // the first as the initial `max_val`.
-    for (i, &val) in values.iter().enumerate().skip(1) {
-        // Using a direct comparison (`val > max_val`) will simply ignore NaNs,
-        // because any comparison with NaN is false.
-        if val > max_val {
-            max_val = val;
-            max_idx = i;
-        }
-    }
-
-    max_idx
+    values.iter()
+    .enumerate()
+    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    .map(|(idx, _)| idx)
+    .unwrap_or(0)
 }
 
 pub fn sample(probs: &Vec<f32>) -> usize {

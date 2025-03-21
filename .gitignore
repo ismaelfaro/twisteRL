@@ -75,3 +75,4 @@ runs/
 # Rust
 rust/target
 target
+rust/src/concatenated_files.rs
